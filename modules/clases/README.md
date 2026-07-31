@@ -1,8 +1,8 @@
 # <center>MicroPython Library</center>
 
-## Characteristics:
+## Key Features:
 These library modules are designed using POO to facilitate the management of common devices in electronics projects using microcontrollers GPIO, programmed in MicroPython.
-It's design relays on a compact isr code, and externall user defined callbacks to handle the irq events.
+Its design relies on a compact isr code, and external user defined callbacks to handle the irq events.
 
 ## Requirements
 ### Low-Pass filters and Pull-Up/Down resistors
@@ -10,19 +10,19 @@ While these libraries were created with simplicity and efficiency in mind, they 
 Another design concept is the decision to base the function of the controllers on the use of external pull-up/pull-down resistors on the GPIO pins, to give projects greater design flexibility.
 
 ## Project Structure
-This library is made by modules. Each module contents the classes needed to drive a single device.
+This library is made by modules. Each module contains the classes needed to drive a single device.
 The documentation of each class is written in the module file.  
 The main characteristics of the modules of this library, are shown below
 
-## Clases
+## Classes
 
 ### Button
-Class to manage event short and long clicks on buttons connected to a GPIO microcontrollers
+Class to manage short and long clicks events on buttons connected to a GPIO microcontrollers
 #### Main features
 >* Irq driven
 >* Trigger on high or low value
 >* Normal Close or Normal Open buttons
->* Detect short or long clicks (Long click duration especified in the instanciation)
+>* Detect short or long clicks (Long click duration specified in the instantiation)
 >* Uses an external (outside ISR context) user callback
 >* No limit for the external user callback
 
@@ -30,7 +30,7 @@ Class to manage event short and long clicks on buttons connected to a GPIO micro
 Class to manage mechanical quadrature rotary encoders connected to GPIO microcontrollers
 #### Main features
 >* Irq driven
->* Detects clockwise and counterclockwise turn, and passes the direction to an external (outside the ISR context) user callback
+>* Detects clockwise and counter-clockwise rotation, and passes the direction to an external (outside the ISR context) user callback
 >* No limit for the external user callback
 
 ## Examples
@@ -63,21 +63,21 @@ def buttonpressed(longClick):
 
 ```
 ## Hardware Design
-Below is shown an example of how to connect a button.
+Recommended hardware connection for buttons.
 Low-Pass filter and Pull-up is needed
 ![Button](image.png)
 
-This is an example of an encoder connection
+Recommended hardware connection for mechanical rotary encoders.
 There is Low-Pass filters and Pull-Up resistors in each GPIO pins
 ![Encoder](image-1.png)
 
 ## Compatibility
-This library's modules were tested in a real hardware on a RP2040 Zero , but no changes are needed to run in other `MicroPython based microcontrollers`
+This library's modules were tested in a real hardware, based on a RP2040 Zero, but no changes are needed to run in other `MicroPython-based microcontrollers`
 
 ## Limitations
 * No code for debouncing are implemented
 * No embedded GPIO Pull-Up/Down are implemented in GPIO pins
-* Designed only for MicroPython bases microcontrollers
+* Designed exclusively for MicroPython-based microcontrollers
 
 ## Installation
 Copy the .py file of the module(s) needed to the /lib folder of the microcontroller file system
