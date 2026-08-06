@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical button driver
 Date Creation: 24-07-2026
-Last Modified: 27-07-2026
+Last Modified: 06-08-2026
 -------------------------------------------------------
 
 Button is a MicroPython call to manage mechanical buttons connected to a GPIO of a MC
@@ -35,7 +35,7 @@ Example:
     # button pin = 4
     # Long click duration in ms = 500
     # button activates on high value
-    
+
     def buttonpressed(longClick):
         if longClick == Button.LONG_CLICK:
             print('Long Click Detected')
@@ -47,27 +47,29 @@ Example:
 from micropython import const, alloc_emergency_exception_buf, schedule
 from machine import Pin
 from time import ticks_ms, ticks_diff
+from exceptions import ButtonException
 
 alloc_emergency_exception_buf(100)
 
+
 class Button:
-    '''
+    """
     Driver for mechanical button
 
     The class detects button click using GPIO interrupt and schedules a callback
     function outside isr context, passing short or long click as an argument
-    '''
+    """
 
     SHORT_CLICK = const(0)
     LONG_CLICK = const(1)
     ACTIVE_HIGH = const(1)
     ACTIVE_LOW = const(0)
-    
-    def __init__(self, pin :int, longClick_ms :int, upDown :int, callback :callable):
+
+    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback: callable):
         """
         Creates a Button object
 
-        Args:
+        Parameters:
             pin (int):
                 GPIO connected to the button
 
@@ -90,9 +92,9 @@ class Button:
         """
         if longClick_ms < 0:
             raise ValueError("longClick_ms can't be negative")
-        self._longClick_ms :int = longClick_ms
+        self._longClick_ms: int = longClick_ms
 
-        if not isinstance (pin, int) or pin < 0:
+        if not isinstance(pin, int) or pin < 0:
             raise TypeError("Pin must be an integer >= 0")
         self._pin = pin
 
@@ -100,7 +102,7 @@ class Button:
             raise ValueError("upDown must be Button.ACTIVE_HIGH or Button.ACTIVE_LOW")
         self._upDown = upDown
 
-        if not callable (callback):
+        if not callable(callback):
             raise TypeError("callback must be a already defined function")
         self.callback = callback
 
@@ -112,20 +114,24 @@ class Button:
         self._valorPin = 1
 
     def _localCallback(self, tipoClick: int) -> None:
+        """
+        Calls the user callback function with the type of click detected
+        Raises ButtonException if there is an error calling the user callback function
+        """
         try:
             self.callback(tipoClick)
         except Exception as e:
-            print("error: ", e)
+            raise ButtonException(f"Error calling callback {self.callback.__name__} {e}") from e
         finally:
             self._isrEnable = 1
 
     def buttonPressed(self, pin):
-        '''
+        """
         IRQ handler function
 
         Determines long or short click duration
-        It shedules the user callback, outside the ISR context, with the type of click 
-        '''
+        It schedules the user callback, outside the ISR context, with the type of click
+        """
         if not self._isrEnable:
             return
         self._isrEnable = 0
@@ -143,11 +149,11 @@ class Button:
                     schedule(self._localCallback, Button.SHORT_CLICK)
 
     def disable(self):
-        '''
+        """
         Method for disabling the button interrupts.
         The button action will no longer produce interrupts until enable() is invoked.
         Useful to avoid button interactions in critical sections of the program
-        '''
+        """
         self._pinButton.irq(handler=None)
 
     def enable(self):

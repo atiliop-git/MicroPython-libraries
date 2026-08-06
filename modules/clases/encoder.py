@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical quadrature rotary encoder's driver
 Date Creation: 24-07-2026
-Last Modified: 26-07-2026
+Last Modified: 06-08-2026
 -------------------------------------------------------
 
 Encoder is a MicroPython class to manage mechanical quadrature rotary encoders using
@@ -85,13 +85,13 @@ class Encoder:
         self._pinB = Pin(pinB, Pin.IN)
         if not callable(callback):
             raise TypeError("callback must be a defined function")
-        self.callback = callback
+        self._callback = callback
         self._direction = 0
 
         # Irq only needs to be defined on pinA
-        self._pinA.irq(handler=self.encRotated, trigger=Pin.IRQ_FALLING)
+        self._pinA.irq(handler=self._encRotated, trigger=Pin.IRQ_FALLING)
 
-    def encRotated(self, pin):
+    def _encRotated(self, pin):
         """
         IRQ handler function
 
@@ -99,7 +99,7 @@ class Encoder:
         It schedules the user callback, outside isr context, with the direction
         """
         self._direction = Encoder.CLOCKWISE if not self._pinB.value() else Encoder.COUNTERCLOCKWISE
-        schedule(self.callback, self._direction)
+        schedule(self._callback, self._direction)
 
     # ---------------------------------------------------------------
 
@@ -117,12 +117,12 @@ class Encoder:
         The encoder rotation will produce interrupts until disable() is invoked.
         Useful to allow encoder interaction only when is needed in any section of the program
         """
-        self._pinA.irq(handler=self.encRotated, trigger=Pin.IRQ_FALLING)
+        self._pinA.irq(handler=self._encRotated, trigger=Pin.IRQ_FALLING)
 
     def set_callback(self, callback: callable) -> None:
-        '''
+        """
         Method for setting a new user callback function.
         Modifying the callback function provides the encoder with functionality for every
-        program need, whithout creating new encoder objects
-        '''
-        self.callback = set_callback
+        program need, without creating new encoder objects
+        """
+        self._callback = callback
