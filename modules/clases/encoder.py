@@ -118,3 +118,11 @@ class Encoder:
         Useful to allow encoder interaction only when is needed in any section of the program
         """
         self._pinA.irq(handler=self.encRotated, trigger=Pin.IRQ_FALLING)
+
+    def set_callback(self, callback: callable) -> None:
+        '''
+        Method for setting a new user callback function.
+        Modifying the callback function provides the encoder with functionality for every
+        program need, whithout creating new encoder objects
+        '''
+        self.callback = set_callback
