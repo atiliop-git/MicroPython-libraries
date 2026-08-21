@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: Customized exceptions for the library
 Date Creation: 24-07-2026
-Last Modified: 06-08-2026
+Last Modified: 18-08-2026
 -------------------------------------------------------
 
 This is a module that contains several classes of exceptions used in the library.
@@ -44,4 +44,12 @@ class MenuException(Exception):
 
 
 class ButtonException(Exception):
+    pass
+
+
+class EncoderException(Exception):
+    pass
+
+
+class InputException(Exception):
     pass

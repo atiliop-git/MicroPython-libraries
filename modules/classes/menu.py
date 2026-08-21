@@ -185,6 +185,7 @@ class Menu:
     def execute_item(self) -> None:
         """
         Executes the callback or changes to the menu linked to the current item
+        Callback is priority. If exists, calls it and ignore menu change
         If the item is disabled, no action is taken
         add the current menu to the menu stack and set the active level to the menu linked to the item
         Checks if the menu linked and the callback is valid, if not raises an exception
@@ -192,18 +193,23 @@ class Menu:
         if self._current_menu()[1][self._index_item()][5]:
             callback = self._current_menu()[1][self._index_item()][3]
             level = self._current_menu()[1][self._index_item()][2]
+            input_item = self._current_menu()[1][self._index_item()][6]
             if not callback is None:
                 if not callable(callback):
                     raise MenuException(f"callback: {callback.__name__} is of type {type(callback)} and  must be callable or None")
-                callback(self._active_level, self._active_item)
-            if not 0 <= level <= len(self._menu):
-                raise MenuException(f"Trying to reach inexistent menu {level}")
-            if level:
-                self._active_level = level
-                self._menu_stack.append(self._active_level)
-                self._active_item = 1
-                self.show()
-                self.select_item()
+                else:
+                    # callback available. Calls it
+                    callback(self._active_level, self._active_item, input_item)
+            else:
+                # No callback. Tries to jump to other menu
+                if not 0 <= level <= len(self._menu):
+                    raise MenuException(f"Trying to reach inexistent menu {level}")
+                if level:
+                    self._active_level = level
+                    self._menu_stack.append(self._active_level)
+                    self._active_item = 1
+                    self.show()
+                    self.select_item()
 
     def next_item(self):
         """

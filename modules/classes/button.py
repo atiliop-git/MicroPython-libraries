@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical button driver
 Date Creation: 24-07-2026
-Last Modified: 06-08-2026
+Last Modified: 19-08-2026
 -------------------------------------------------------
 
 Button is a MicroPython call to manage mechanical buttons connected to a GPIO of a MC
@@ -49,6 +49,7 @@ from machine import Pin
 from time import ticks_ms, ticks_diff
 from exceptions import ButtonException
 
+
 alloc_emergency_exception_buf(100)
 
 
@@ -65,7 +66,7 @@ class Button:
     ACTIVE_HIGH = const(1)
     ACTIVE_LOW = const(0)
 
-    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback: callable):
+    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback):
         """
         Creates a Button object
 
@@ -163,3 +164,12 @@ class Button:
         Useful to allow button interactions in needed sections of the program
         """
         self._pinButton.irq(handler=self.buttonPressed, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
+
+    def set_callback(self, callback):
+        """
+        Method to setup a new callback.
+        This method helps to change a new button context
+        """
+        if not callable(callback):
+            raise ButtonException("Trying to set a non callable callback")
+        self.callback = callback
