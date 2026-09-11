@@ -18,7 +18,6 @@ License: MIT
 Dependencies:
     ssd1306
     micropython
-    machine
     exceptions
 Tested on:
     RaspBerry Py Pico 2040 Zero
@@ -27,13 +26,12 @@ Hardware design:
     The class relies on I2C hardware interface of the MC, thus, verify that
     the MC has I2C hardware interface before using this class.
     Most MC have I2C hardware interface.
-    IMPORTANT !!!
-        This class doesn't implement software pull-up / down thus external pull-up / down
-        resistor must be used in the circuit if the module doesn't have them.
 Example:
     from oled1306I2c import Oled1306I2c
+    from machine import Pin, I2C
+    I2c = I2C(id, sda = Pin(6), scl = Pin(7))
 
-    MyOled = Oled1306I2c(0, 1) # sda pin = 0, scl pin = 1
+    MyOled = Oled1306I2c(I2c) # Oled = oled interface object,sda pin = 0, scl pin = 1
     MyOled.write_lines([(1, 'Hello'), (2, 'World')])
     MyOled.write_chars(3, 5, 'MicroPython')
     MyOled.delete_lines(1, 2)
@@ -54,11 +52,10 @@ rotate(False)  # rotate 0 degrees
 show()         # write the contents of the FrameBuffer to display memory
 """
 
-from ssd1306 import SSD1306_I2C
-from machine import Pin, I2C
-from exceptions import I2cException, OledException
-from micropython import const
-
+from ssd1306 import SSD1306_I2C  # type: ignore
+from exceptions import OledException  # type: ignore
+from machine import I2C, Pin  # type: ignore
+from micropython import const  # type: ignore
 
 class Oled1306I2c(SSD1306_I2C):
     WIDTH = const(128)  # oled width if no specified
@@ -69,36 +66,27 @@ class Oled1306I2c(SSD1306_I2C):
     COLUMN_WIDTH = const(8)  # width in pixels of standard font used by the oled
     MAX_COLUMN = const(WIDTH // COLUMN_WIDTH)  # maximum number of columns that can be written on the oled
 
-    def __init__(self, sda_pin: int, scl_pin: int, width: int = None, height: int = None, i2c_freq: int = None) -> None:
+    def __init__(self, i2c, width: int = 0, height: int = 0) -> None:
         """
         Initialize the OLED display.
 
         Parameters:
-            sda_pin (int):
-                The GPIO pin number for the SDA line.
-
-            scl_pin (int):
-                The GPIO pin number for the SCL line.
-
             width (int, optional):
                 The width of the OLED display. Defaults to 128.
 
             height (int, optional):
                 The height of the OLED display. Defaults to 64.
 
-            i2c_freq (int, optional):
-                The I2C frequency. Defaults to 400000 Hz.
-
-            Raises: I2cException: If there is an error initializing the I2C interface.
+            Raises: OledException: If there is an error initializing the OLED display.
         """
-        self.width = Oled1306I2c.WIDTH if width is None else width
-        self.height = Oled1306I2c.HEIGHT if height is None else height
-        self.i2c_freq = Oled1306I2c.FREQ if i2c_freq is None else i2c_freq
+
+        self.width = Oled1306I2c.WIDTH if width is 0 else width
+        self.height = Oled1306I2c.HEIGHT if height is 0 else height
+        self.i2c = i2c
         try:
-            self.i2c = I2C(0, sda=Pin(sda_pin), scl=Pin(scl_pin), freq=self.i2c_freq)
             super().__init__(self.width, self.height, self.i2c)
         except Exception as e:
-            raise I2cException(f"Error assigning I2C {e}") from e
+            raise OledException(f"Error initializing OLED display {e}") from e
 
     def _line_y(self, line: int) -> int:
         """
@@ -160,7 +148,7 @@ class Oled1306I2c(SSD1306_I2C):
             col (int): The column number where the characters will start.
             chars (str): The string of characters to be written.
         """
-        self._valid_line(line) and self._valid_column(col)
+        _: bool = self._valid_line(line) and self._valid_column(col)
         self.fill_rect(self._col_x(col), self._line_y(line), len(chars) * Oled1306I2c.COLUMN_WIDTH, Oled1306I2c.LINE_HEIGHT, 0)
         self.text(chars[0 : Oled1306I2c.MAX_COLUMN - col + 1], self._col_x(col), self._line_y(line), 1)
         self.show()

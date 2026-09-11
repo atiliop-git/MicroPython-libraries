@@ -2,4 +2,6 @@
 *.mypy_cache
 docs/1.3inch_IIC_OLED_Module_SH1106_MC130GX_MC130VX_V1.0
 modules/classes/pru.py
+modules/classes/sh1106.py
+modules/classes/ssd1306.py
 modules/classes/__pycache__

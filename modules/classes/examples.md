@@ -160,7 +160,7 @@ inputs structure
     limits: (min value, max value) allowed to be input
     step_up: value increment step 
     step_down: value decrement step
-    clear_screen: clear screen before prompt
+    list: list of values to choose from
     value: value stored in the item. float | string | YesNo
 )
 """
@@ -172,7 +172,7 @@ inputs = (
      'limits': (0, 10),
      'step_up': 5,
      'step_down': 1,
-     'clear_screen': True,
+     'list': ('a', 'b', 'c'),
      'value': 0.0
     }
 )

@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical quadrature rotary encoder's driver
 Date Creation: 24-07-2026
-Last Modified: 06-08-2026
+Last Modified: 11-09-2026
 -------------------------------------------------------
 
 Encoder is a MicroPython class to manage mechanical quadrature rotary encoders using
@@ -41,8 +41,8 @@ Example:
 
 """
 
-from machine import Pin
-from micropython import const, schedule, alloc_emergency_exception_buf
+from machine import Pin # type: ignore
+from micropython import const, schedule, alloc_emergency_exception_buf # type: ignore
 
 alloc_emergency_exception_buf(100)
 
@@ -59,7 +59,7 @@ class Encoder:
     CLOCKWISE = const(1)
     COUNTERCLOCKWISE = const(0)
 
-    def __init__(self, pinA: int, pinB: int, callback: callable):
+    def __init__(self, pinA: int, pinB: int, callback) -> None:
         """
         Creates an Encoder object
         Args:
@@ -86,12 +86,12 @@ class Encoder:
         if not callable(callback):
             raise TypeError("callback must be a defined function")
         self._callback = callback
-        self._direction = 0
+        self._direction: int = 0
 
         # Irq only needs to be defined on pinA
         self._pinA.irq(handler=self._encRotated, trigger=Pin.IRQ_FALLING)
 
-    def _encRotated(self, pin):
+    def _encRotated(self, pin: Pin) -> None:
         """
         IRQ handler function
 
@@ -99,11 +99,11 @@ class Encoder:
         It schedules the user callback, outside isr context, with the direction
         """
         self._direction = Encoder.CLOCKWISE if not self._pinB.value() else Encoder.COUNTERCLOCKWISE
-        schedule(self._callback, self._direction)
+        schedule(self._callback, self._direction) # type: ignore
 
     # ---------------------------------------------------------------
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Method for disabling the encoder interrupts.
         The encoder rotation will no longer produce interrupts until enable() is invoked.
@@ -111,7 +111,7 @@ class Encoder:
         """
         self._pinA.irq(handler=None)
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Method for enabling the encoder interrupts.
         The encoder rotation will produce interrupts until disable() is invoked.
@@ -119,7 +119,7 @@ class Encoder:
         """
         self._pinA.irq(handler=self._encRotated, trigger=Pin.IRQ_FALLING)
 
-    def set_callback(self, callback: callable) -> None:
+    def set_callback(self, callback) -> None:
         """
         Method for setting a new user callback function.
         Modifying the callback function provides the encoder with functionality for every

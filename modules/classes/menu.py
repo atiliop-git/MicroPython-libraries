@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: Menu driver for OLED display
 Date Creation: 01-08-2026
-Last Modified: 06-08-2026
+Last Modified: 11-09-2026
 -------------------------------------------------------
 
 Menu is a MicroPython class to manage menu structures for OLED displays
@@ -160,7 +160,7 @@ class Menu:
         self._oled.write_lines([(1, f"{self._current_menu()[0]:^{str(self._oled_max_column)}}")])  # Display line 1 with centered Menu name
         self._oled.write_lines([(line_text[0], " " + line_text[1]) for line_text in self._current_menu()[1]])  # menu item tuple
 
-    def select_item(self, cursor_shape: str = None) -> None:
+    def select_item(self, cursor_shape: str = '') -> None:
         """
         Selects the current item and displays a character in the first column of the line of the item
         to indicate that it is selected
@@ -168,7 +168,7 @@ class Menu:
         If the item is disabled, displays a message "Disabled Item !!" on line 8
         """
         self._oled.delete_chars(self._previous_item + 1, 1, 1)
-        self._oled.write_chars(self._active_item + 1, 1, self._cursor_shape if cursor_shape is None else cursor_shape)
+        self._oled.write_chars(self._active_item + 1, 1, self._cursor_shape if cursor_shape is '' else cursor_shape)
         if self._current_menu()[1][self._index_item()][5]:
             self._oled.write_lines([(8, f"{self._current_menu()[1][self._index_item()][4]:^{str(self._oled_max_column)}}")])  # Display line 8 with centered Foot Text
         else:

@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical button driver
 Date Creation: 24-07-2026
-Last Modified: 19-08-2026
+Last Modified: 11-09-2026
 -------------------------------------------------------
 
 Button is a MicroPython call to manage mechanical buttons connected to a GPIO of a MC
@@ -44,11 +44,10 @@ Example:
 
 """
 
-from micropython import const, alloc_emergency_exception_buf, schedule
-from machine import Pin
-from time import ticks_ms, ticks_diff
+from micropython import const, alloc_emergency_exception_buf, schedule # type: ignore
+from machine import Pin # type: ignore
+from time import ticks_ms, ticks_diff # type: ignore
 from exceptions import ButtonException
-
 
 alloc_emergency_exception_buf(100)
 
@@ -66,7 +65,7 @@ class Button:
     ACTIVE_HIGH = const(1)
     ACTIVE_LOW = const(0)
 
-    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback):
+    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback) -> None:
         """
         Creates a Button object
 
@@ -126,7 +125,7 @@ class Button:
         finally:
             self._isrEnable = 1
 
-    def buttonPressed(self, pin):
+    def buttonPressed(self, pin: Pin) -> None:
         """
         IRQ handler function
 
@@ -149,7 +148,7 @@ class Button:
                 else:
                     schedule(self._localCallback, Button.SHORT_CLICK)
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Method for disabling the button interrupts.
         The button action will no longer produce interrupts until enable() is invoked.
@@ -157,7 +156,7 @@ class Button:
         """
         self._pinButton.irq(handler=None)
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Method for enabling the button interrupts.
         The button action will produce interrupts until disable() is invoked.
@@ -165,7 +164,7 @@ class Button:
         """
         self._pinButton.irq(handler=self.buttonPressed, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
 
-    def set_callback(self, callback):
+    def set_callback(self, callback) -> None:
         """
         Method to setup a new callback.
         This method helps to change a new button context
