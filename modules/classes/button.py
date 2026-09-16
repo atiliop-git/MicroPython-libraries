@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical button driver
 Date Creation: 24-07-2026
-Last Modified: 11-09-2026
+Last Modified: 15-09-2026
 -------------------------------------------------------
 
 Button is a MicroPython call to manage mechanical buttons connected to a GPIO of a MC
@@ -103,7 +103,7 @@ class Button:
         self._upDown = upDown
 
         if not callable(callback):
-            raise TypeError("callback must be a already defined function")
+            raise TypeError("callback must be a defined function")
         self.callback = callback
 
         # Variables globales del objeto
@@ -121,7 +121,9 @@ class Button:
         try:
             self.callback(tipoClick)
         except Exception as e:
-            raise ButtonException(f"Error calling callback {self.callback.__name__} {e}") from e
+            raise ButtonException(
+                f"Error calling callback {self.callback.__name__}", ""
+            )
         finally:
             self._isrEnable = 1
 
@@ -170,5 +172,5 @@ class Button:
         This method helps to change a new button context
         """
         if not callable(callback):
-            raise ButtonException("Trying to set a non callable callback")
+            raise ButtonException("Trying to call a non callable ", f"{type(callback)}")
         self.callback = callback

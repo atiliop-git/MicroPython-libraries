@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: Menu driver for OLED display
 Date Creation: 01-08-2026
-Last Modified: 11-09-2026
+Last Modified: 15-09-2026
 -------------------------------------------------------
 
 Menu is a MicroPython class to manage menu structures for OLED displays
@@ -51,6 +51,7 @@ menu = (
             If disabled, the item will be displayed with a message "Disabled Item !!" on line 8
             of the OLED display when selected. No action will be taken when the item is selected,
             even if a callback is defined.
+        Input Item: Item in the Input structure, for combining menus with imputs
 
 Example of usage:
 
@@ -64,19 +65,19 @@ Example of usage:
  menu = (
          ('Electr. Charge',   # menu #1
              (
-                 (2,'Setup Values', 2, None, 'Click to enter', True),
-                 (3,'Run/Stop', 0, muestra_algo, 'Run/Stop charge', True)
+                 (2,'Setup Values', 2, None, 'Click to enter', True, 0),
+                 (3,'Run/Stop', 0, muestra_algo, 'Run/Stop charge', True, 0)
              ),
          ),
          (   # menu #2
              'Set Parameters',
              (
-                 (2,'Set Current', 0, None, 'Current value', True),
-                 (3,'Set Power', 0, None, 'Power value', True),
-                 (4,'Set Resistance', 0, None, 'Resistance value', True),
-                 (5,'Set min Voltage', 0, None, 'Low Volt Value', True),
-                 (6,'Set time limit', 0, None, 'Run Time Limit', True),
-                 (7,'Return', 1, None, 'Main Menu', True),
+                 (2,'Set Current', 0, None, 'Current value', True, 0),
+                 (3,'Set Power', 0, None, 'Power value', True, 0),
+                 (4,'Set Resistance', 0, None, 'Resistance value', True, 0),
+                 (5,'Set min Voltage', 0, None, 'Low Volt Value', True, 0),
+                 (6,'Set time limit', 0, None, 'Run Time Limit', True, 0),
+                 (7,'Return', 1, None, 'Main Menu', True, 0),
              )
              )
  )
@@ -119,7 +120,7 @@ class Menu:
     if the menu structure exceeds the display capacity.
     """
 
-    def __init__(self, oled, menu: dict) -> None:
+    def __init__(self, oled, menu: tuple) -> None:
         """
         Initializes the Menu class.
         Receive an oled object and a menu as parameter
@@ -155,7 +156,9 @@ class Menu:
         """
         self._max_items = len(self._current_menu()[1])
         if self._max_items > self._oled_max_items - 2:  # 2 lines for head and foot text
-            raise MenuException("Size of menu greater than display capacity")
+            raise MenuException(
+                f"Size of menu greater than display capacity: ", f"{self._max_items}"
+            )
         self.clear_display()
         self._oled.write_lines([(1, f"{self._current_menu()[0]:^{str(self._oled_max_column)}}")])  # Display line 1 with centered Menu name
         self._oled.write_lines([(line_text[0], " " + line_text[1]) for line_text in self._current_menu()[1]])  # menu item tuple
@@ -167,8 +170,10 @@ class Menu:
         Displays the foot text of the item on line 8 of the OLED display, if the item is enabled
         If the item is disabled, displays a message "Disabled Item !!" on line 8
         """
+        if cursor_shape:
+            self._cursor_shape = cursor_shape[:1]
         self._oled.delete_chars(self._previous_item + 1, 1, 1)
-        self._oled.write_chars(self._active_item + 1, 1, self._cursor_shape if cursor_shape is '' else cursor_shape)
+        self._oled.write_chars(self._active_item + 1, 1, self._cursor_shape)
         if self._current_menu()[1][self._index_item()][5]:
             self._oled.write_lines([(8, f"{self._current_menu()[1][self._index_item()][4]:^{str(self._oled_max_column)}}")])  # Display line 8 with centered Foot Text
         else:
@@ -196,14 +201,16 @@ class Menu:
             input_item = self._current_menu()[1][self._index_item()][6]
             if not callback is None:
                 if not callable(callback):
-                    raise MenuException(f"callback: {callback.__name__} is of type {type(callback)} and  must be callable or None")
+                    raise MenuException(
+                        f"callback: {callback.__name__} must be callable", ""
+                    )
                 else:
                     # callback available. Calls it
                     callback(self._active_level, self._active_item, input_item)
             else:
                 # No callback. Tries to jump to other menu
                 if not 0 <= level <= len(self._menu):
-                    raise MenuException(f"Trying to reach inexistent menu {level}")
+                    raise MenuException(f"Trying to reach inexistent menu ", f"{level}")
                 if level:
                     self._active_level = level
                     self._menu_stack.append(self._active_level)

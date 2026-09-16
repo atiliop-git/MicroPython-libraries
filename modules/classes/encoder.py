@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical quadrature rotary encoder's driver
 Date Creation: 24-07-2026
-Last Modified: 11-09-2026
+Last Modified: 15-09-2026
 -------------------------------------------------------
 
 Encoder is a MicroPython class to manage mechanical quadrature rotary encoders using
@@ -43,6 +43,7 @@ Example:
 
 from machine import Pin # type: ignore
 from micropython import const, schedule, alloc_emergency_exception_buf # type: ignore
+from exceptions import EncoderException
 
 alloc_emergency_exception_buf(100)
 
@@ -84,12 +85,27 @@ class Encoder:
             raise TypeError("Pin B must be a non negative number")
         self._pinB = Pin(pinB, Pin.IN)
         if not callable(callback):
-            raise TypeError("callback must be a defined function")
+            raise TypeError(f"callback {type(callback)=},  must be callable")
         self._callback = callback
         self._direction: int = 0
+        self._isrEnable: int = 1
 
         # Irq only needs to be defined on pinA
         self._pinA.irq(handler=self._encRotated, trigger=Pin.IRQ_FALLING)
+
+    def _localCallback(self, direction) -> None:
+        """
+        Calls the user callback function with the type of click detected
+        Raises ButtonException if there is an error calling the user callback function
+        """
+        try:
+            self._callback(direction)
+        except Exception as e:
+            raise EncoderException(
+                f"Error calling callback {self._callback.__name__}", ""
+            )
+        finally:
+            self._isrEnable = 1
 
     def _encRotated(self, pin: Pin) -> None:
         """
@@ -98,8 +114,13 @@ class Encoder:
         Determines rotation direction by sampling phase B
         It schedules the user callback, outside isr context, with the direction
         """
-        self._direction = Encoder.CLOCKWISE if not self._pinB.value() else Encoder.COUNTERCLOCKWISE
-        schedule(self._callback, self._direction) # type: ignore
+        if not self._isrEnable:
+            return
+        self._isrEnable = 0
+        self._direction = (
+            Encoder.CLOCKWISE if not self._pinB.value() else Encoder.COUNTERCLOCKWISE
+        )
+        schedule(self._localCallback, self._direction) # type: ignore
 
     # ---------------------------------------------------------------
 

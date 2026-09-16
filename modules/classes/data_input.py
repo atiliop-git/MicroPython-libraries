@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: Data input management using rotary encoder and buttons
 Date Creation: 01-08-2026
-Last Modified: 11-09-2026
+Last Modified: 15-09-2026
 -------------------------------------------------------
 
 Data_input_encoder is a MicroPython class to manage data inputs using rotary encoders and buttons
@@ -18,7 +18,9 @@ Features:
     The class will raise an exceptions if the inputs structure contains inconsistent data
     The fields are defined in a tuple of disctionaries containing the type and other parameters
     of fields
-    The type list allows to choose  a value among a list of string elements
+    The type list allows to choose  a value among a list of string elements. The first value in a list
+    field is 1.
+
 License: MIT
 Dependencies:
     exceptions
@@ -57,14 +59,14 @@ class Data_input_encoder:
     """
 
     # Data types
-    STRING = const(0)
-    YES_NO = const(1)
-    NUMBER = const(2)
-    LIST = const(3)
+    STRING: int = const(0)
+    YES_NO: int = const(1)
+    NUMBER: int = const(2)
+    LIST: int = const(3)
 
     def __init__(self, oled: Oled1306I2c, param: tuple[dict, ...]) -> None:
-        self._oled = oled
-        self._param = param
+        self._oled: Oled1306I2c = oled
+        self._param: tuple = param
         self._value_num: float = float()
         self._value_str: str = ''
         self._value_yes_no: int = 0
@@ -83,7 +85,7 @@ class Data_input_encoder:
 
     def _get_values(self):
         return self._param[self._current_item-1]['value']
-    
+
     def _get_lista_item(self):
         return self._param[self._current_item-1]['list'][self._current_list_item - 1]
 
@@ -111,8 +113,8 @@ class Data_input_encoder:
             string_format = f'{self._get_lista_item():{self._param[self._current_item-1]["format"]}}'
             self._oled.write_chars(*self._value_coords(),string_format)
         else:
-            raise InputException('Invalid data type in module data_input')
-    
+            raise InputException('Invalid data type in module data_input',f'{self._data_type():1d}')
+
     def set_item(self, item: int) -> None:
         """
         This method is used to setup the current item in the inputs structure
@@ -133,8 +135,9 @@ class Data_input_encoder:
             self._current_list_item = self._get_values()
             self._max_list_item = len(self._param[self._current_item - 1]['list'])
         else:
-            raise InputException('Invalid data type in module data_input')
-    
+            raise InputException(
+                "Invalid data type in module data_input", f"{self._data_type():1d}")
+
     def clear_values(self):
         """
         This method is used to clear the value of the current item.
@@ -143,7 +146,7 @@ class Data_input_encoder:
         self._value_num = 0.0
         self._value_str = ''
         self._value_yes_no = 0
-        self._current_list_item = 0
+        self._current_list_item = 1 # First list item
         self.prompt()
 
     def set_values(self) -> None:
@@ -161,7 +164,8 @@ class Data_input_encoder:
         elif self._data_type() == Data_input_encoder.LIST:
             self._param[self._current_item - 1]['value'] = self._current_list_item
         else:
-            raise InputException('Invalid data type in module data_input')
+            raise InputException(
+                "Invalid data type in module data_input", f"{self._data_type():1d}")
 
     def step_up(self) -> None:
         """
@@ -184,7 +188,7 @@ class Data_input_encoder:
         """
         self._value_num = max (self._value_num - self._param[self._current_item - 1]['step_down'], self._param[self._current_item - 1]['limits'][0])
         self.prompt()
-    
+
     def list_up(self) -> None:
         """
         This method is used to select the next value of the current
@@ -200,7 +204,7 @@ class Data_input_encoder:
         """
         self._current_list_item = self._current_list_item - 1 if self._current_list_item > 1 else self._max_list_item
         self.prompt()
-    
+
     def toggle_yes_no(self) -> None:
         """
         This method is used to toggle the value Yes/No of the Yes_No field
@@ -217,9 +221,9 @@ class Data_input_encoder:
         self._value_str = text
         self.prompt()
 
-    def get_values(self) -> tuple[float, str, int]:
+    def get_values(self) -> tuple[float, str, int, int]:
         """
         This method is used to return the current value of current item
             
         """
-        return (self._value_num, self._value_str, self._value_yes_no)
+        return (self._value_num, self._value_str, self._value_yes_no, self._current_list_item)

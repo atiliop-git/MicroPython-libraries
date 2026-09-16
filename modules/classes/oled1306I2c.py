@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: oled-based display driver
 Date Creation: 24-07-2026
-Last Modified: 06-08-2026
+Last Modified: 15-09-2026
 -------------------------------------------------------
 
 Oled1306I2c is a MicroPython class to manage OLED displays connected via I2C
@@ -86,7 +86,7 @@ class Oled1306I2c(SSD1306_I2C):
         try:
             super().__init__(self.width, self.height, self.i2c)
         except Exception as e:
-            raise OledException(f"Error initializing OLED display {e}") from e
+            raise OledException('Error Init Oled', 'super().__init__()')
 
     def _line_y(self, line: int) -> int:
         """
@@ -106,7 +106,7 @@ class Oled1306I2c(SSD1306_I2C):
         """
         if not (line < 1 or line > Oled1306I2c.MAXLINE):
             return True
-        raise OledException("Line is outside Oled boundaries")
+        raise OledException("Invalid line number :",f'{line}')
 
     def _valid_column(self, column: int) -> bool:
         """
@@ -114,7 +114,7 @@ class Oled1306I2c(SSD1306_I2C):
         """
         if not (column < 1 or column > Oled1306I2c.MAX_COLUMN):
             return True
-        raise OledException("Column is outside Oled boundaries")
+        raise OledException("Invalid column number :", f'{column}')
 
     def write_lines(self, lines: list) -> None:
         """

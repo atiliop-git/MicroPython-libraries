@@ -107,19 +107,19 @@ myOled.clear_screen()
     menu = (
             ('Electr. Charge',   # menu #1
                 (
-                    (2,'Setup Values', 2, None, 'Click to enter', True),
-                    (3,'Run/Stop', 0, muestra_algo, 'Run/Stop charge', True)
+                    (2,'Setup Values', 2, None, 'Click to enter', True, 0),
+                    (3,'Run/Stop', 0, muestra_algo, 'Run/Stop charge', True, 0)
                 ),
             ),
             (   # menu #2
                 'Set Parameters',
                 (
-                    (2,'Set Current', 0, None, 'Current value', True),
-                    (3,'Set Power', 0, None, 'Power value', True),
-                    (4,'Set Resistance', 0, None, 'Resistance value', True),
-                    (5,'Set min Voltage', 0, None, 'Low Volt Value', True),
-                    (6,'Set time limit', 0, None, 'Run Time Limit', True),
-                    (7,'Return', 1, None, 'Main Menu', True),
+                    (2,'Set Current', 0, None, 'Current value', True, 0),
+                    (3,'Set Power', 0, None, 'Power value', True, 0),
+                    (4,'Set Resistance', 0, None, 'Resistance value', True, 0),
+                    (5,'Set min Voltage', 0, None, 'Low Volt Value', True, 0),
+                    (6,'Set time limit', 0, None, 'Run Time Limit', True, 0),
+                    (7,'Return', 1, None, 'Main Menu', True, 0),
                 )
                 )
     )
