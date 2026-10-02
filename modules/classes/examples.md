@@ -4,13 +4,18 @@
     from button import Button
     button_pin = 4
     Long_click = 500 # in ms
+    double_click = 200 # in ms
     button_activates = Button.ACTIVE_LOW
+
     def buttonpressed(type_of_Click):
         if type_of_Click == Button.LONG_CLICK:
             print('Long Click Detected')
-        else:
+        elif type_of_Click == Button.SHORT_CLICK:
             print('Short Click detected')
-    MyButton = Button(button_pin, Long_click, button_activates, buttonpressed)
+        else
+            print('Double Click pressed')
+    
+    MyButton = Button(button_pin, button_activates, buttonpressed, Long_click_ms, double_click_ms)
 ```
 ## Encoder class example
 ```Python
@@ -35,8 +40,14 @@
     my_oled.delete_lines(2, 3) # delete lines 2 and 3
     my_oled.write_chars(2, 10, 'yes') # write 'yes' in line 2 column 10
     my_oled.clear_screen() # clears the oled screen
-
     # Besides the methods of this class, all the methods of class SSD1306_I2C
+```
+User can define fonts others than default font 8x8 through the Writer class
+from Peter Hinch https://github.com/peterhinch/micropython-font-to-py
+the method set_font(.py_font_module) is available. The .py font file should be made using a program called font-to-py.py from Peter Hinch and the Writer module should be available as well. For example:
+```Python
+# place the writer.py module and the myfont.py file available
+set_font('myfont')
 ```
 
 ## Menu class example
@@ -189,4 +200,15 @@ while True:
         input_numbers(field+1)
     while True:
         pass
+```
+
+## Beep class example
+```Python
+from machine import Pin
+from beep import Beep
+
+mybuzz = Beep(pin = Pin(4, Pin.OUT), active = Beep.ACTIVE_HIGH)
+
+mybuzz.beep(last_ms = 300, times = 3) # To beep three times of 300ms each
+
 ```

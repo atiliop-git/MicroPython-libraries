@@ -4,7 +4,7 @@ Version: 1.0
 Author: Atilio Porfirio
 Purpose: mechanical button driver
 Date Creation: 24-07-2026
-Last Modified: 15-09-2026
+Last Modified: 02-10-2026
 -------------------------------------------------------
 
 Button is a MicroPython call to manage mechanical buttons connected to a GPIO of a MC
@@ -15,7 +15,7 @@ License: MIT
 Dependencies:
     machine
     micropython
-    time
+    exceptions
 Tested on:
     RaspBerry Py Pico 2040 Zero
     Wokwi web simulator
@@ -24,58 +24,62 @@ Hardware design:
     This class doesn't implement software pull-up / down thus external pull-up / down
     resistor must be used in the circuit
     No debouncing implementation was included in its design.
-    The button pins need to be connected to the GPIO using any electronic debouncing method,
-    such as low-pass filter made by a resistor and a capacitor.
+    It's strongly recommended to use hardware debouncing methods such as low-pass filter
+    made by a resistor and a capacitor, and schmitt trigger if needed
 
 Example:
 
     from button import Button
 
-    MyButton = Button(4,500,Button.ACTIVE_HIGH, buttonpressed)
-    # button pin = 4
-    # Long click duration in ms = 500
-    # button activates on high value
-
-    def buttonpressed(longClick):
-        if longClick == Button.LONG_CLICK:
+    def buttonpressed(clickType):
+        if clickType == Button.LONG_CLICK:
             print('Long Click Detected')
+        elif clickType == Button.DOUBLE_CLICK:
+            print('Double Click Detected')
         else:
             print('Short Click detected')
+
+    MyButton = Button(4,Button.ACTIVE_HIGH, buttonpressed)
+
+    # button GPIO pin = 4
+    # button activates on high value
+    # Callback function "buttonpressed"
+    # Long click duration in ms = 400 ms (default value)
+    # button double click = 200 ms (default value)
 
 """
 
 from micropython import const, alloc_emergency_exception_buf, schedule # type: ignore
-from machine import Pin # type: ignore
-from time import ticks_ms, ticks_diff # type: ignore
+from machine import Pin, Timer # type: ignore
 from exceptions import ButtonException
+try:
+    from typing import Callable
+except ImportError:
+    pass
 
-alloc_emergency_exception_buf(100)
-
+alloc_emergency_exception_buf(200)
 
 class Button:
     """
     Driver for mechanical button
 
     The class detects button click using GPIO interrupt and schedules a callback
-    function outside isr context, passing short or long click as an argument
+    function outside isr context, passing short, long or double click as an argument
     """
 
-    SHORT_CLICK = const(0)
-    LONG_CLICK = const(1)
-    ACTIVE_HIGH = const(1)
-    ACTIVE_LOW = const(0)
+    SHORT_CLICK: int = const(0)
+    LONG_CLICK: int = const(1)
+    DOUBLE_CLICK: int = const(2)
+    ACTIVE_HIGH: int = const(1)
+    ACTIVE_LOW: int = const(0)
 
-    def __init__(self, pin: int, longClick_ms: int, upDown: int, callback) -> None:
+    def __init__(self, pin: int, upDown: int, callback: Callable , longClick_ms: int = 400, doubleClick_ms: int = 200) -> None:
         """
         Creates a Button object
 
         Parameters:
             pin (int):
                 GPIO connected to the button
-
-            longClick_ms (int):
-                Duration of a long click in milliseconds
-                If zero, no long click will be managed
 
             upDown (int):
                 Level of activation.
@@ -84,15 +88,38 @@ class Button:
 
             callback (callable):
                 Function to schedule when click is detected
-                Receives SHORT_CLICK or LONG_CLICK
+                Receives SHORT_CLICK, LONG_CLICK or DOUBLE_CLICK
+
+            longClick_ms (int):
+                Duration of a long click in milliseconds
+                Must be >= 100 ms
+
+            doubleClick_ms (int):
+                Time elapsed to consider two clicks as double click, in ms
+                Must be >= 100 ms
 
         Raises:
             TypeError / ValueError:
                 if any parameter is invalid
         """
-        if longClick_ms < 0:
-            raise ValueError("longClick_ms can't be negative")
-        self._longClick_ms: int = longClick_ms
+        if not isinstance(longClick_ms, int) or isinstance(longClick_ms, bool):
+            raise TypeError("longClick_ms must be int")
+
+        if not isinstance(doubleClick_ms, int) or isinstance(doubleClick_ms, bool):
+            raise TypeError("doubleClick_ms must be int")
+
+        if longClick_ms < 300:
+            raise ValueError(f"longClick_ms must be >= 300 ms")
+
+        if doubleClick_ms < 150:
+            raise ValueError(f"doubleClick_ms must be >= 150 ms")
+
+        if longClick_ms <= doubleClick_ms:
+            raise ValueError(f"longClick_ms must be greater than doubleClick_ms")
+        
+        self._longClick_ms = longClick_ms
+
+        self._doubleClick_ms = doubleClick_ms
 
         if not isinstance(pin, int) or pin < 0:
             raise TypeError("Pin must be an integer >= 0")
@@ -104,52 +131,72 @@ class Button:
 
         if not callable(callback):
             raise TypeError("callback must be a defined function")
-        self.callback = callback
+        self.callback: Callable = callback
 
         # Variables globales del objeto
-        self._butOn = 0
         self._pinButton = Pin(self._pin, Pin.IN)
         self._pinButton.irq(handler=self.buttonPressed, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
         self._isrEnable = 1
-        self._valorPin = 1
-
-    def _localCallback(self, tipoClick: int) -> None:
-        """
-        Calls the user callback function with the type of click detected
-        Raises ButtonException if there is an error calling the user callback function
-        """
+        self._timer_doubleClick_Running: int = 0
+        self._timer_doubleClick: Timer = Timer(-1)
+        self._timer_longClick: Timer = Timer(-1)
+        self._longClick_fired: bool = False
+        self._doubleClick_fired: bool = False
+        
+    def _timer_doubleClick_Start (self) -> None:
+        self._timer_doubleClick.init(period=self._doubleClick_ms, mode = Timer.ONE_SHOT, callback=self._callback_doubleClick_timer)
+        self._timer_doubleClick_Running = 1
+    
+    def _timer_longClick_Start (self) -> None:
+        self._timer_longClick.init(period=self._longClick_ms, mode = Timer.ONE_SHOT, callback=self._callback_longClick_timer)
+    
+    def _callback_doubleClick_timer(self, t: Timer) -> None:
         try:
-            self.callback(tipoClick)
+            self._timer_doubleClick_Running = 0
+            schedule(self.callback ,Button.SHORT_CLICK)
         except Exception as e:
-            raise ButtonException(
-                f"Error calling callback {self.callback.__name__}", ""
-            )
-        finally:
-            self._isrEnable = 1
+            print('Calling self.callback en _callback_doubleClick_timer', e)
+    
+    def _callback_longClick_timer(self, t: Timer) -> None:
+        try:
+            self._longClick_fired = True
+            schedule(self.callback, Button.LONG_CLICK)
+        except Exception as e:
+            print('Calling self.callback en _callback_longClick_timer', e)
+
+    def _localCallback_clickDown(self, _) -> None:
+        try:
+            if self._timer_doubleClick_Running:
+                self._timer_doubleClick.deinit()
+                self._timer_doubleClick_Running = 0
+                self._doubleClick_fired = True          # doubleClick fired
+                self._timer_longClick.deinit()  # Cancels longClick timer in seconds clicks
+                self.callback(Button.DOUBLE_CLICK)
+            else:
+                self._longClick_fired = False
+                self._doubleClick_fired = False
+                self._timer_longClick_Start()
+        except Exception as e:
+            print('In _localCallback_clickDown', e)
+
+    def _localCallback_clickUp(self, _) -> None:
+        try:
+            if not self._longClick_fired:
+                self._timer_longClick.deinit()
+                if not self._longClick_fired and not self._doubleClick_fired:
+                    self._timer_doubleClick_Start()
+        except Exception as e:
+            print('In _localCallback_clickUp', e)
 
     def buttonPressed(self, pin: Pin) -> None:
-        """
-        IRQ handler function
-
-        Determines long or short click duration
-        It schedules the user callback, outside the ISR context, with the type of click
-        """
-        if not self._isrEnable:
-            return
-        self._isrEnable = 0
-        self._valorPin = self._pinButton.value()
-        if self._valorPin == self._upDown:
-            self._butOn = ticks_ms()
-            self._isrEnable = 1
+        valorPin = pin.value()
+        if valorPin == self._upDown:
+            # button pressed or click down
+            schedule(self._localCallback_clickDown, 0)
         else:
-            if not self._longClick_ms:
-                schedule(self._localCallback, Button.SHORT_CLICK)
-            else:
-                if ticks_diff(ticks_ms(), self._butOn) > self._longClick_ms:
-                    schedule(self._localCallback, Button.LONG_CLICK)
-                else:
-                    schedule(self._localCallback, Button.SHORT_CLICK)
-
+            # button released or click up
+            schedule(self._localCallback_clickUp, 0)
+                
     def disable(self) -> None:
         """
         Method for disabling the button interrupts.

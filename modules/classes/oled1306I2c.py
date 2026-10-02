@@ -1,10 +1,10 @@
 """
 Class Name : Oled1306I2c
-Version: 1.0
+Version: 1.1
 Author: Atilio Porfirio
 Purpose: oled-based display driver
 Date Creation: 24-07-2026
-Last Modified: 15-09-2026
+Last Modified: 26-09-2026
 -------------------------------------------------------
 
 Oled1306I2c is a MicroPython class to manage OLED displays connected via I2C
@@ -14,11 +14,14 @@ Features:
     SSD1306_I2C subclass
     Simplifies the use of the display by providing methods to write and delete
     lines and characters controlling oled boundaries
+    New in version 1.1: User can define fonts others than default font 8x8 through the Writer class
+        from Peter Hinch https://github.com/peterhinch/micropython-font-to-py
 License: MIT
 Dependencies:
     ssd1306
     micropython
     exceptions
+    writer
 Tested on:
     RaspBerry Py Pico 2040 Zero
     Wokwi web simulator
@@ -52,19 +55,25 @@ rotate(False)  # rotate 0 degrees
 show()         # write the contents of the FrameBuffer to display memory
 """
 
+
 from ssd1306 import SSD1306_I2C  # type: ignore
-from exceptions import OledException  # type: ignore
+from exceptions import ButtonException, MyException, OledException  # type: ignore
 from machine import I2C, Pin  # type: ignore
-from micropython import const  # type: ignore
+from micropython import const # type: ignore
+try:
+    from ast import Module
+    from types import ModuleType
+    from typing import Any
+except ImportError:
+    pass
 
 class Oled1306I2c(SSD1306_I2C):
+    # Default values for a standard Oled display of 128x64
     WIDTH = const(128)  # oled width if no specified
     HEIGHT = const(64)  # oled height if no specified
     FREQ = const(400000)  # oled i2c frequency if no specified
     LINE_HEIGHT = const(8)  # height in pixels of standard font used by the oled
-    MAXLINE = const(HEIGHT // LINE_HEIGHT)  # maximum number of lines that can be written on the oled
     COLUMN_WIDTH = const(8)  # width in pixels of standard font used by the oled
-    MAX_COLUMN = const(WIDTH // COLUMN_WIDTH)  # maximum number of columns that can be written on the oled
 
     def __init__(self, i2c, width: int = 0, height: int = 0) -> None:
         """
@@ -83,6 +92,11 @@ class Oled1306I2c(SSD1306_I2C):
         self.width = Oled1306I2c.WIDTH if width is 0 else width
         self.height = Oled1306I2c.HEIGHT if height is 0 else height
         self.i2c = i2c
+        self.font_height: int = Oled1306I2c.LINE_HEIGHT
+        self.font_width: int = Oled1306I2c.COLUMN_WIDTH
+        self.max_lines: int = self.height // self.font_height
+        self.max_columns: int = self.width // self.font_width
+        self.font_module: str = ''
         try:
             super().__init__(self.width, self.height, self.i2c)
         except Exception as e:
@@ -92,19 +106,19 @@ class Oled1306I2c(SSD1306_I2C):
         """
         Returns the y-coordinate in pixels for the specified line number.
         """
-        return (line - 1) * Oled1306I2c.LINE_HEIGHT
+        return (line - 1) * self.font_height
 
     def _col_x(self, col: int) -> int:
         """
         Returns the x-coordinate in pixels for the specified column number.
         """
-        return (col - 1) * Oled1306I2c.COLUMN_WIDTH
+        return (col - 1) * self.font_width
 
     def _valid_line(self, line: int) -> bool:
         """
         Validates if the specified line number is within the OLED display boundaries.
         """
-        if not (line < 1 or line > Oled1306I2c.MAXLINE):
+        if not (line < 1 or line > self.max_lines):
             return True
         raise OledException("Invalid line number :",f'{line}')
 
@@ -112,7 +126,7 @@ class Oled1306I2c(SSD1306_I2C):
         """
         Validates if the specified column number is within the OLED display boundaries.
         """
-        if not (column < 1 or column > Oled1306I2c.MAX_COLUMN):
+        if not (column < 1 or column > self.max_columns):
             return True
         raise OledException("Invalid column number :", f'{column}')
 
@@ -124,10 +138,14 @@ class Oled1306I2c(SSD1306_I2C):
             text to be written on that line.
         """
         for line, text in lines:
-            self._valid_line(line)
-            self.fill_rect(0, self._line_y(line), self.width, Oled1306I2c.LINE_HEIGHT, 0)
+            _: bool = self._valid_line(line)
+            self.fill_rect(0, self._line_y(line), self.width, self.font_height, 0)
             if text:
-                self.text(text[0 : Oled1306I2c.MAX_COLUMN], 0, self._line_y(line), 1)
+                if self.font_module:
+                    self.wri.set_textpos(self, self._line_y(line), 0)
+                    self.wri.printstring(text[0 : self.max_columns])
+                else:
+                    self.text(text[0 : self.max_columns], 0, self._line_y(line), 1)
         self.show()
 
     def delete_lines(self, *lines: int) -> None:
@@ -148,10 +166,15 @@ class Oled1306I2c(SSD1306_I2C):
             col (int): The column number where the characters will start.
             chars (str): The string of characters to be written.
         """
-        _: bool = self._valid_line(line) and self._valid_column(col)
-        self.fill_rect(self._col_x(col), self._line_y(line), len(chars) * Oled1306I2c.COLUMN_WIDTH, Oled1306I2c.LINE_HEIGHT, 0)
-        self.text(chars[0 : Oled1306I2c.MAX_COLUMN - col + 1], self._col_x(col), self._line_y(line), 1)
-        self.show()
+        if chars:
+            _: bool = self._valid_line(line) and self._valid_column(col)
+            self.fill_rect(self._col_x(col), self._line_y(line), len(chars) * self.font_width, self.font_height, 0)
+            if self.font:
+                self.wri.set_textpos(self, self._line_y(line), self._col_x(col))
+                self.wri.printstring(chars[0 : self.max_columns - col + 1])
+            else:
+                self.text(chars[0 : self.max_columns - col + 1], self._col_x(col), self._line_y(line), 1)
+            self.show()
 
     def delete_chars(self, line: int, col: int, n_chars: int) -> None:
         """
@@ -172,3 +195,45 @@ class Oled1306I2c(SSD1306_I2C):
         """
         self.fill(0)
         self.show()
+    
+    def _set_boundaries(self, font_height: int, font_width: int) -> tuple:
+        '''
+        Calculates max line and column for the font_height and width defined
+        '''
+        return self.height // self.font_height, self.width // self.font_width
+    
+    def _set_font_default(self) -> None:
+        '''
+        Sets the default values of font height and width and display boundaries for printing
+        '''
+        self.font_height = 8   
+        self.font_width = 8
+        self.max_lines, self.max_columns = self._set_boundaries(self.font_height, self.font_width)
+    
+    def set_font(self, font_module: str) -> None:
+        '''
+        Sets a new font for the diaplay
+        The font must be a python font (a .py file) created using font-to-py desktop program
+        If empty string is passed as argument, the default Framebuffer font is used
+        New boundaries for the display are calculated using the font size (height and width)
+        If other than the default font is set, the Writer class and the font file are imported, and so,
+        the printstring method of the class Writer is used to display text in the display, 
+        instead the text method from class Framebuffer
+        '''
+        self.font_module = font_module
+        if self.font_module:
+            try:
+                self.font= __import__(font_module)
+                from writer import Writer
+                self.wri: Writer = Writer(self, self.font, verbose=False)
+                self.font_height = self.font.height()
+                self.font_width = self.font.max_width()
+                self.max_lines, self.max_columns = self._set_boundaries(self.font_height, self.font_width)
+                # print(f'{self.max_lines=} - {self.max_columns=}')
+                # print(f'{self.font_height=} - {self.font_width=}')
+            except ImportError:
+                print("Font file doesn't exist")
+                self._set_font_default()
+        else:
+            self._set_font_default()
+            

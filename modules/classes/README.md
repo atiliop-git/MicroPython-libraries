@@ -22,7 +22,7 @@ Class to manage short and long clicks events on buttons connected to a GPIO micr
 >* Irq driven
 >* Trigger on high or low value
 >* Normal Close or Normal Open buttons
->* Detect short or long clicks (Long click duration specified in the instantiation)
+>* Detect short or long clicks and double clicks (setting long click and double click duration in the instantiation)
 >* Uses an external (outside ISR context) user callback
 >* No limit for the external user callback
 
@@ -38,6 +38,7 @@ The class is a subclass of the existent SSD1306_I2C class
 #### Main features
 Helps and make very easy to display lines and chars on the oled
 Implements controls to avoid overwrites of data
+Other fonts are available using Peter Hinch writer module, included in this class
 ### Menu
 Manages menu structures for OLED displays with no limit on the number of menus or submenus.
 There is a limit in the amount of Items of a menu, which is determined by the OLED display size.
@@ -55,18 +56,21 @@ Customized Exception for different classes in this library
 ## Examples
 ### Button
 ```Python
-from button import Button
+    from button import Button
+    button_pin = 4
+    Long_click = 500 # in ms
+    double_click = 200 # in ms
+    button_activates = Button.ACTIVE_LOW
 
-MyButton = Button(4,500,Button.ACTIVE_HIGH, buttonpressed)
-# button pin = 4
-# Long click duration in ms = 500
-# button activates on high value
+    def buttonpressed(type_of_Click):
+        if type_of_Click == Button.LONG_CLICK:
+            print('Long Click Detected')
+        elif type_of_Click == Button.SHORT_CLICK:
+            print('Short Click detected')
+        else
+            print('Double Click pressed')
     
-def buttonpressed(longClick):
-    if longClick == Button.LONG_CLICK:
-       print('Long Click Detected')
-    else:
-       print('Short Click detected')
+    MyButton = Button(button_pin, button_activates, buttonpressed, Long_click_ms, double_click_ms)
 ```
 ### Encoder
 ``` Python
@@ -273,6 +277,16 @@ button.enable()
 
 while True:
     pass
+```
+### Beep 
+```Python
+from machine import Pin
+from beep import Beep
+
+mybuzz = Beep(pin = Pin(4, Pin.OUT), active = Beep.ACTIVE_HIGH)
+
+mybuzz.beep(last_ms = 300, times = 3) # To beep three times of 300ms each
+
 ```
 ## Hardware Design
 ### Buttons
