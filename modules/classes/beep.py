@@ -36,9 +36,11 @@ Example:
     # Beep duration in ms = 100 ms
     # Number of beeps = 3
 
-    """
-from machine import Pin, Timer # type: ignore
-from micropython import const, alloc_emergency_exception_buf, schedule # type: ignore
+"""
+
+from machine import Pin, Timer  # type: ignore
+from micropython import const, alloc_emergency_exception_buf, schedule  # type: ignore
+
 try:
     from typing import Callable
 except ImportError:
@@ -46,7 +48,8 @@ except ImportError:
 
 alloc_emergency_exception_buf(200)
 
-class Beep():
+
+class Beep:
 
     ACTIVE_LOW: int = const(0)
     ACTIVE_HIGH: int = const(1)
@@ -62,12 +65,12 @@ class Beep():
         Raises:
             TypeError: if arguments don't match the expected type
             ValueError: checks the range of the arguments
-        
+
         """
         if not isinstance(pin, Pin):
             raise TypeError("pin must be a Pin object")
         self.buzzer: Pin = pin
-        
+
         if not isinstance(active, int):
             raise TypeError("active must be an integer")
         if not (active == self.ACTIVE_LOW or active == self.ACTIVE_HIGH):
@@ -95,15 +98,18 @@ class Beep():
             raise TypeError("last_ms must be an integer")
         if not (10 <= last_ms <= 2000):
             raise ValueError("last_ms must be between 10 and 2000")
-        self.last_ms: int = last_ms
 
         if not isinstance(times, int):
             raise TypeError("times must be an integer")
         if not (1 <= times <= 10):
             raise ValueError("times must be between 1 and 10")
-        # sets the number of times to beep, multiplied by 2 because each beep consists of an on and off state
+        # sets the number of times to beep, multiplied by 2 because each beep consists of 2 states, on and off
         self._times = times * 2
-        self.timerBuzzer.init(period=self.last_ms, mode=Timer.PERIODIC, callback=self._localCallback)
+        self.timerBuzzer.init(
+            period=last_ms, mode=Timer.PERIODIC, callback=self._localCallback
+        )
+        self.beepOn()  # starts with buzzer on
+        self.buzzerState = 1
 
     def _localCallback(self, timer: Timer) -> None:
         """
@@ -113,15 +119,17 @@ class Beep():
 
     def _toggle_buzzer(self, _) -> None:
         """
-        Toggles buzzer state to on and off. As self.times is odd (2 times times), the buzzer ends in off state
-        because allways starts in on state because self.buzzerState is initialized to 0 (off)
+        Toggles the buzzer state between ON and OFF.
+        Each beep consists of two states, therefore _times is
+        twice the requested number of beeps. The sequence ends
+        with the buzzer OFF.
         """
         if self.buzzerState == 0:
             self.beepOn()
         else:
             self.beepOff()
         self._times -= 1
-        if self._times == 0:
+        if self._times == 1:
             self.timerBuzzer.deinit()
             self.buzzerState = 0
 
@@ -138,4 +146,3 @@ class Beep():
         else:
             self.buzzer.value(0)
         self.buzzerState = 0
-    
